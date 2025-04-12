@@ -32,7 +32,7 @@ jobs:
           # Windows构建 (amd64)
           GOOS=windows GOARCH=amd64 go build -o dist/iggen-windows-amd64.exe ./cmd/main.go
 
-      - name: Prepare Release Assets
+      - name: Package Release Files
         run: |
           cd dist
 
@@ -62,30 +62,39 @@ jobs:
       - name: Generate Changelog
         id: changelog
         run: |
-          # 获取最近的两个tag
-          LATEST_TAG=$(git describe --tags --abbrev=0)
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
-
-          # 如果没有上一个tag，就从仓库开始统计
-          if [ -z "$PREVIOUS_TAG" ]; then
-            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
+          # 获取最新的tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "")
 
           # 生成变更日志
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           echo "## What's Changed" >> $GITHUB_ENV
-          git log --pretty=format:"* %s" $PREVIOUS_TAG..$LATEST_TAG >> $GITHUB_ENV
+
+          if [ -n "$LATEST_TAG" ]; then
+            # 尝试获取上一个tag
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+            if [ -n "$PREVIOUS_TAG" ]; then
+              # 如果有上一个tag，显示两个tag之间的变更
+              git log --pretty=format:"* %s" $PREVIOUS_TAG..$LATEST_TAG >> $GITHUB_ENV
+            else
+              # 如果是第一个tag，显示所有历史
+              git log --pretty=format:"* %s" >> $GITHUB_ENV
+            fi
+          else
+            echo "* Initial release" >> $GITHUB_ENV
+          fi
+
           echo "" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "## Installation" >> $GITHUB_ENV
           echo "### Linux" >> $GITHUB_ENV
           echo "\`\`\`bash" >> $GITHUB_ENV
-          echo "tar xzf iggen-${LATEST_TAG}-linux-amd64.tar.gz" >> $GITHUB_ENV
-          echo "sudo mv iggen-${LATEST_TAG}-linux-amd64/iggen /usr/local/bin/" >> $GITHUB_ENV
+          echo "tar xzf iggen-${GITHUB_REF#refs/tags/}-linux-amd64.tar.gz" >> $GITHUB_ENV
+          echo "sudo mv iggen-${GITHUB_REF#refs/tags/}-linux-amd64/iggen /usr/local/bin/" >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "### Windows" >> $GITHUB_ENV
-          echo "1. Download and extract \`iggen-${LATEST_TAG}-windows-amd64.zip\`" >> $GITHUB_ENV
+          echo "1. Download and extract \`iggen-${GITHUB_REF#refs/tags/}-windows-amd64.zip\`" >> $GITHUB_ENV
           echo "2. Add the extracted directory to your PATH environment variable" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
           echo "## Checksums" >> $GITHUB_ENV
@@ -96,18 +105,9 @@ jobs:
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          draft: false
-          prerelease: false
-          tag_name: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
-          body: ${{ env.CHANGELOG }}
           files: |
             dist/release/*
-
-      - name: Clean up
-        if: always()
-        run: rm -rf dist
+          body: ${{ env.CHANGELOG }}
+          draft: false
+          prerelease: false
