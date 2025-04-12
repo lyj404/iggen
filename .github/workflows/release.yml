@@ -1,0 +1,113 @@
+name: Auto Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22.5"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build binaries
+        env:
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          # Linux构建 (amd64)
+          GOOS=linux GOARCH=amd64 go build -o dist/iggen-linux-amd64 ./cmd/main.go
+          # Windows构建 (amd64)
+          GOOS=windows GOARCH=amd64 go build -o dist/iggen-windows-amd64.exe ./cmd/main.go
+
+      - name: Prepare Release Assets
+        run: |
+          cd dist
+
+          # 创建发布目录
+          mkdir -p release
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Linux版本：创建tar.gz
+          mkdir -p iggen-${VERSION}-linux-amd64
+          cp iggen-linux-amd64 iggen-${VERSION}-linux-amd64/iggen
+          cp ../README.md iggen-${VERSION}-linux-amd64/
+          cp ../LICENSE iggen-${VERSION}-linux-amd64/
+          tar -czf release/iggen-${VERSION}-linux-amd64.tar.gz iggen-${VERSION}-linux-amd64
+
+          # Windows版本：创建zip
+          mkdir -p iggen-${VERSION}-windows-amd64
+          cp iggen-windows-amd64.exe iggen-${VERSION}-windows-amd64/iggen.exe
+          cp ../README.md iggen-${VERSION}-windows-amd64/
+          cp ../LICENSE iggen-${VERSION}-windows-amd64/
+          zip -r release/iggen-${VERSION}-windows-amd64.zip iggen-${VERSION}-windows-amd64
+
+          # 生成校验和
+          cd release
+          sha256sum * > SHA256SUMS
+          cd ..
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # 获取最近的两个tag
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
+
+          # 如果没有上一个tag，就从仓库开始统计
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          # 生成变更日志
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "## What's Changed" >> $GITHUB_ENV
+          git log --pretty=format:"* %s" $PREVIOUS_TAG..$LATEST_TAG >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "## Installation" >> $GITHUB_ENV
+          echo "### Linux" >> $GITHUB_ENV
+          echo "\`\`\`bash" >> $GITHUB_ENV
+          echo "tar xzf iggen-${LATEST_TAG}-linux-amd64.tar.gz" >> $GITHUB_ENV
+          echo "sudo mv iggen-${LATEST_TAG}-linux-amd64/iggen /usr/local/bin/" >> $GITHUB_ENV
+          echo "\`\`\`" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "### Windows" >> $GITHUB_ENV
+          echo "1. Download and extract \`iggen-${LATEST_TAG}-windows-amd64.zip\`" >> $GITHUB_ENV
+          echo "2. Add the extracted directory to your PATH environment variable" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "## Checksums" >> $GITHUB_ENV
+          echo "\`\`\`" >> $GITHUB_ENV
+          cat dist/release/SHA256SUMS >> $GITHUB_ENV
+          echo "\`\`\`" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: false
+          prerelease: false
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: ${{ env.CHANGELOG }}
+          files: |
+            dist/release/*
+
+      - name: Clean up
+        if: always()
+        run: rm -rf dist
