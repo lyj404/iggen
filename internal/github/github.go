@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -16,7 +17,26 @@ type GitHubClient struct {
 
 func NewGitHubClient() *GitHubClient {
 	return &GitHubClient{
-		client: &http.Client{Timeout: 15 * time.Second},
+		client: &http.Client{Timeout: 3 * time.Second},
+	}
+}
+
+func NewGitHubClientWithProxy(proxy string) *GitHubClient {
+	// 创建自定义Transport以实现代理配置
+	transport := &http.Transport{}
+	// 代理配置逻辑
+	if proxy != "" {
+		// 解析代理地址（此处假设为HTTP代理，需添加http://前缀）
+		proxyURL, _ := url.Parse("http://" + proxy)
+		// 设置代理方法（自动为每个请求添加代理）
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+	// 返回带代理配置的客户端实例
+	return &GitHubClient{
+		client: &http.Client{
+			Transport: transport,       // 注入自定义Transport
+			Timeout:   3 * time.Second, // 设置全局请求超时
+		},
 	}
 }
 

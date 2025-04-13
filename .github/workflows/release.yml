@@ -84,19 +84,6 @@ jobs:
             echo "* Initial release" >> $GITHUB_ENV
           fi
 
-          echo "" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "## Installation" >> $GITHUB_ENV
-          echo "### Linux" >> $GITHUB_ENV
-          echo "\`\`\`bash" >> $GITHUB_ENV
-          echo "tar xzf iggen-${GITHUB_REF#refs/tags/}-linux-amd64.tar.gz" >> $GITHUB_ENV
-          echo "sudo mv iggen-${GITHUB_REF#refs/tags/}-linux-amd64/iggen /usr/local/bin/" >> $GITHUB_ENV
-          echo "\`\`\`" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "### Windows" >> $GITHUB_ENV
-          echo "1. Download and extract \`iggen-${GITHUB_REF#refs/tags/}-windows-amd64.zip\`" >> $GITHUB_ENV
-          echo "2. Add the extracted directory to your PATH environment variable" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
           echo "## Checksums" >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
           cat dist/release/SHA256SUMS >> $GITHUB_ENV

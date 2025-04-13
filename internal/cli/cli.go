@@ -15,32 +15,56 @@ import (
 const helpText = `iggen - .gitignore生成器
 
 用法:
-  iggen list                   查看所有模板
-  iggen search <关键词>         搜索模板
-  iggen gen <模板名> 			 生成文件
+  iggen <命令> [proxy <地址>] [参数...]
 
-示例:
-  iggen gen Go Python         生成Go和Python的合并配置
-  iggen search Rust           查找Rust相关模板
+基础命令:
+  list        查看所有模板
+  search <关键词> 搜索模板
+  gen <模板名> 生成文件
 `
 
 func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
+	// 参数数量校验（至少需要1个命令参数）
 	if len(os.Args) < 2 {
 		fmt.Print(helpText)
 		return
 	}
-
+	var (
+		proxyAddr string   // 代理服务器地址（格式：host:port）
+		command   string   // 主命令（list/search/gen）
+		cmdArgs   []string // 命令专属参数
+	)
+	// 参数解析流程
+	args := os.Args[1:]       // 剥离程序自身名称
+	command = args[0]         // 提取主命令
+	remainingArgs := args[1:] // 剩余待处理参数
+	// 代理配置解析（支持格式：iggen [command] proxy 127.0.0.1:7890 [...]）
+	if len(remainingArgs) >= 1 && remainingArgs[0] == "proxy" {
+		if len(remainingArgs) < 2 {
+			exitWithError("proxy命令缺少代理地址", nil)
+		}
+		proxyAddr = remainingArgs[1] // 提取代理地址
+		cmdArgs = remainingArgs[2:]  // 剩余参数给具体命令
+	} else {
+		cmdArgs = remainingArgs // 无代理参数直接传递
+	}
+	// 客户端实例化（根据代理配置选择基础客户端或代理客户端）
+	client := gh // 默认使用基础客户端
+	if proxyAddr != "" {
+		// 当存在代理配置时，创建带代理的客户端
+		client = github.NewGitHubClientWithProxy(proxyAddr)
+	}
+	// 创建请求上下文（可用于超时控制/取消请求）
 	ctx := context.Background()
-	command := os.Args[1]
-
+	// 命令路由分发
 	switch command {
-	case "list":
-		handleList(ctx, gh)
-	case "search":
-		handleSearch(ctx, gh, os.Args[2:])
-	case "gen":
-		handleGenerate(ctx, gh, gen, os.Args[2:])
-	default:
+	case "list": // 列出所有可用模板
+		handleList(ctx, client)
+	case "search": // 搜索模板
+		handleSearch(ctx, client, cmdArgs)
+	case "gen": // 生成.gitignore文件
+		handleGenerate(ctx, client, gen, cmdArgs)
+	default: // 未知命令处理
 		fmt.Printf("未知命令: %s\n\n%s", command, helpText)
 	}
 }
