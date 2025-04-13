@@ -21,13 +21,19 @@ const helpText = `iggen - .gitignore生成器
   list        查看所有模板
   search <关键词> 搜索模板
   gen <模板名> 生成文件
+  help        显示帮助信息
 `
 
 func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
-	// 参数数量校验（至少需要1个命令参数）
+	for _, arg := range os.Args[1:] {
+		if arg == "help" || arg == "h" {
+			fmt.Print(helpText)
+			return
+		}
+	}
+	// 参数不足时的错误提示
 	if len(os.Args) < 2 {
-		fmt.Print(helpText)
-		return
+		exitWithError("错误：缺少命令参数\n\n请使用 -help 查看帮助信息", nil)
 	}
 	var (
 		proxyAddr string   // 代理服务器地址（格式：host:port）
