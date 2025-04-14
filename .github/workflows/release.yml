@@ -84,7 +84,8 @@ jobs:
             echo "* Initial release" >> $GITHUB_ENV
           fi
 
-          echo "\n## Checksums" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "## Checksums" >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
           cat dist/release/SHA256SUMS >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
