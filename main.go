@@ -1,9 +1,9 @@
 package main
 
 import (
-	"iggen/internal/cli"
-	"iggen/internal/generator"
-	"iggen/internal/github"
+	"github.com/lyj404/iggen/internal/cli"
+	"github.com/lyj404/iggen/internal/generator"
+	"github.com/lyj404/iggen/internal/github"
 )
 
 func main() {

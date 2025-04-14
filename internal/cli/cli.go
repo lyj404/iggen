@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"iggen/pkg/utils"
 	"os"
 	"strings"
 
-	"iggen/internal/generator"
-	"iggen/internal/github"
+	"github.com/lyj404/iggen/pkg/utils"
+
+	"github.com/lyj404/iggen/internal/generator"
+	"github.com/lyj404/iggen/internal/github"
 )
 
 const (
