@@ -28,9 +28,9 @@ jobs:
         run: |
           mkdir -p dist
           # Linux构建 (amd64)
-          GOOS=linux GOARCH=amd64 go build -o dist/iggen-linux-amd64 ./cmd/main.go
+          GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/iggen-linux-amd64 ./cmd/main.go
           # Windows构建 (amd64)
-          GOOS=windows GOARCH=amd64 go build -o dist/iggen-windows-amd64.exe ./cmd/main.go
+          GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/iggen-windows-amd64.exe ./cmd/main.go
 
       - name: Package Release Files
         run: |
@@ -84,7 +84,7 @@ jobs:
             echo "* Initial release" >> $GITHUB_ENV
           fi
 
-          echo "## Checksums" >> $GITHUB_ENV
+          echo "\n## Checksums" >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
           cat dist/release/SHA256SUMS >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV

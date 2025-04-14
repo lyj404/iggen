@@ -42,6 +42,7 @@ func NewGitHubClientWithProxy(proxy string) *GitHubClient {
 
 // ListTemplates获取GitHub所有.gitignore模板
 func (c *GitHubClient) ListTemplates(ctx context.Context) ([]string, error) {
+	// 创建带上下文的HTTP GET请求
 	req, _ := http.NewRequestWithContext(
 		ctx,
 		"GET",
@@ -49,24 +50,31 @@ func (c *GitHubClient) ListTemplates(ctx context.Context) ([]string, error) {
 		nil,
 	)
 
+	// 执行HTTP请求
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API请求失败: %w", err)
 	}
+	// 确保响应体关闭
 	defer resp.Body.Close()
 
+	// 检查HTTP状态码
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API返回异常状态码: %d", resp.StatusCode)
 	}
 
+	// 定义临时结构体解析JSON响应
 	var files []struct{ Name string }
 	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
+		// JSON解析错误处理
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
 
+	// 过滤并格式化模板名称
 	templates := make([]string, 0)
 	for _, f := range files {
 		if strings.HasSuffix(f.Name, ".gitignore") {
+			// 移除.gitignore后缀
 			templates = append(templates, strings.TrimSuffix(f.Name, ".gitignore"))
 		}
 	}
@@ -75,10 +83,12 @@ func (c *GitHubClient) ListTemplates(ctx context.Context) ([]string, error) {
 
 // GetNormalizedName对模板名称进行小写
 func (c *GitHubClient) GetNormalizedName(ctx context.Context, inputName string) (string, error) {
+	// 获取所有可用模板
 	templates, err := c.ListTemplates(ctx)
 	if err != nil {
 		return "", err
 	}
+	// 将输入转换为小写进行模糊匹配
 	lowerInput := strings.ToLower(inputName)
 	for _, t := range templates {
 		if strings.ToLower(t) == lowerInput {
@@ -95,11 +105,13 @@ func (c *GitHubClient) GetTemplate(ctx context.Context, name string) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
+	// 构造GitHub raw内容URL
 	url := fmt.Sprintf(
 		"https://raw.githubusercontent.com/github/gitignore/main/%s.gitignore",
 		normalized, // 使用规范化后的名称
 	)
 
+	// 创建带上下文的GET请求
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -107,9 +119,11 @@ func (c *GitHubClient) GetTemplate(ctx context.Context, name string) ([]byte, er
 	}
 	defer resp.Body.Close()
 
+	// 验证HTTP响应状态
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
+	// 读取全部响应内容并返回
 	return io.ReadAll(resp.Body)
 }
