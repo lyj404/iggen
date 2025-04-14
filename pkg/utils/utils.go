@@ -1,6 +1,10 @@
 package utils
 
 import (
+	"bufio"
+	"fmt"
+	"os"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -9,20 +13,29 @@ import (
 func FuzzySearch(templates []string, term string) []string {
 	// 统一转为小写实现大小写不敏感搜索[^1]
 	term = strings.ToLower(term)
+	var reg *regexp.Regexp
+	useRegex := isRegex(term)
+
+	// 判断是否使用正则
+	if useRegex {
+		// 自动添加(?!)实现大小写不敏感
+		reg = regexp.MustCompile("(?i)" + term)
+	}
+
 	matches := make([]string, 0)
 
 	// 遍历所有模板进行双阶段匹配
 	for _, t := range templates {
+		// 将从模板列表中遍历出来的模板名称改成小写
 		lower := strings.ToLower(t)
 
-		// 第一阶段：直接包含匹配
-		if strings.Contains(lower, term) {
+		// 正则匹配
+		if useRegex && reg.MatchString(lower) {
 			matches = append(matches, t)
-			continue // 匹配成功则跳过后续判断[^2]
 		}
 
-		// 第二阶段：特殊字符处理后匹配
-		if compareSimilar(lower, term) {
+		// 模糊匹配
+		if strings.Contains(lower, term) || compareSimilar(lower, term) {
 			matches = append(matches, t)
 		}
 	}
@@ -49,4 +62,27 @@ func removeSpecialChars(s string) string {
 		}
 		return -1
 	}, s)
+}
+
+// ExitWithError提示错误信息
+func ExitWithError(msg string, err error) {
+	fmt.Printf("\033[31m错误: %s\033[0m\n", msg)
+	if err != nil {
+		fmt.Printf("详情: %v\n", err)
+	}
+	os.Exit(1)
+}
+
+// ConfirmOverwrite用于确认覆盖已存在.gitignore文件
+func ConfirmOverwrite() bool {
+	fmt.Print(".gitignore已存在，是否覆盖？(y/N) ")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return strings.ToLower(scanner.Text()) == "y"
+}
+
+// isRegex判断是否正则表达式
+func isRegex(pattern string) bool {
+	_, err := regexp.Compile(pattern)
+	return err == nil
 }
