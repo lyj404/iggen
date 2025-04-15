@@ -17,7 +17,7 @@ func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
 	args := os.Args[1:]
 	// 判断参数是否为0
 	if len(args) == 0 {
-		utils.ExitWithError("错误：缺少命令参数\n\n请使用 -help 查看帮助信息", nil)
+		utils.ExitWithError("错误：缺少命令参数\n\n请使用 help命令 查看帮助信息", nil)
 	}
 	if args[0] == "help" || args[0] == "h" {
 		if helpText, ok := commandHelps[args[1]]; ok {
@@ -30,37 +30,15 @@ func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
 	}
 
 	var (
-		proxyAddr string   // 代理服务器地址（格式：host:port）
-		command   string   // 主命令（list/search/gen）
-		cmdArgs   []string // 命令专属参数
+		command string   // 主命令（list/search/gen）
+		cmdArgs []string // 命令专属参数
 	)
 	// 参数解析流程
 	command = args[0]         // 提取主命令
 	remainingArgs := args[1:] // 剩余待处理参数
 
-	// 寻找proxy命令在所在位置
-	proxyIndex := -1
-	for i, arg := range remainingArgs {
-		if arg == "proxy" {
-			proxyIndex = i
-			break
-		}
-	}
-
-	// 处理代理参数
-	if proxyIndex != -1 {
-		// 检查proxy后面是否有代理地址
-		if proxyIndex+1 >= len(remainingArgs) {
-			utils.ExitWithError("proxy命令缺少代理地址", nil)
-		}
-
-		// 提取代理地址
-		proxyAddr = remainingArgs[proxyIndex+1]
-		// 提取主命令后的参数
-		cmdArgs = remainingArgs[:proxyIndex]
-	} else {
-		cmdArgs = remainingArgs
-	}
+	// 提取代理地址和主命令参数
+	proxyAddr, cmdArgs := extractProxy(remainingArgs)
 
 	// 客户端实例化（根据代理配置选择基础客户端或代理客户端）
 	client := gh // 默认使用基础客户端
@@ -82,6 +60,39 @@ func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
 	default: // 未知命令处理
 		fmt.Printf("未知命令: %s\n\n%s", command, helpText)
 	}
+}
+
+func extractProxy(args []string) (string, []string) {
+	// 寻找proxy命令在所在位置
+	proxyIndex := -1
+	for i, arg := range args {
+		if arg == "proxy" {
+			proxyIndex = i
+			break
+		}
+	}
+
+	var (
+		proxyAddr string
+		cmdArgs   []string
+	)
+
+	// 处理代理参数
+	if proxyIndex != -1 {
+		// 检查proxy后面是否有代理地址
+		if proxyIndex+1 >= len(args) {
+			utils.ExitWithError("proxy命令缺少代理地址", nil)
+		}
+
+		// 提取代理地址
+		proxyAddr = args[proxyIndex+1]
+		// 提取主命令后的参数
+		cmdArgs = args[:proxyIndex]
+	} else {
+		cmdArgs = args
+	}
+
+	return proxyAddr, cmdArgs
 }
 
 // handleList用于执行list命令来获取所有.gitignore模板

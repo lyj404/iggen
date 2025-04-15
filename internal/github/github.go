@@ -8,7 +8,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
+)
+
+const (
+	timeOut        time.Duration = 3 * time.Second
+	contentsAPIURL               = "https://api.github.com/repos/github/gitignore/contents"
+	rawContentURL                = "https://raw.githubusercontent.com/github/gitignore/main/%s.gitignore"
 )
 
 type GitHubClient struct {
@@ -17,7 +24,7 @@ type GitHubClient struct {
 
 func NewGitHubClient() *GitHubClient {
 	return &GitHubClient{
-		client: &http.Client{Timeout: 3 * time.Second},
+		client: &http.Client{Timeout: timeOut},
 	}
 }
 
@@ -34,8 +41,8 @@ func NewGitHubClientWithProxy(proxy string) *GitHubClient {
 	// 返回带代理配置的客户端实例
 	return &GitHubClient{
 		client: &http.Client{
-			Transport: transport,       // 注入自定义Transport
-			Timeout:   3 * time.Second, // 设置全局请求超时
+			Transport: transport, // 注入自定义Transport
+			Timeout:   timeOut,   // 设置全局请求超时
 		},
 	}
 }
@@ -46,7 +53,7 @@ func (c *GitHubClient) ListTemplates(ctx context.Context) ([]string, error) {
 	req, _ := http.NewRequestWithContext(
 		ctx,
 		"GET",
-		"https://api.github.com/repos/github/gitignore/contents",
+		contentsAPIURL,
 		nil,
 	)
 
@@ -72,12 +79,21 @@ func (c *GitHubClient) ListTemplates(ctx context.Context) ([]string, error) {
 
 	// 过滤并格式化模板名称
 	templates := make([]string, 0)
+	var wg sync.WaitGroup
 	for _, f := range files {
 		if strings.HasSuffix(f.Name, ".gitignore") {
-			// 移除.gitignore后缀
-			templates = append(templates, strings.TrimSuffix(f.Name, ".gitignore"))
+			wg.Add(1)
+			go func(name string) {
+				defer wg.Done()
+				// 移除.gitignore后缀
+				templates = append(templates, strings.TrimSuffix(f.Name, ".gitignore"))
+			}(f.Name)
 		}
 	}
+
+	// 等待所有协程完成
+	wg.Wait()
+
 	return templates, nil
 }
 
@@ -107,7 +123,7 @@ func (c *GitHubClient) GetTemplate(ctx context.Context, name string) ([]byte, er
 	}
 	// 构造GitHub raw内容URL
 	url := fmt.Sprintf(
-		"https://raw.githubusercontent.com/github/gitignore/main/%s.gitignore",
+		rawContentURL,
 		normalized, // 使用规范化后的名称
 	)
 
