@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -13,86 +14,64 @@ import (
 )
 
 func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
-	// 提取iggen后面的命令参数()
-	args := os.Args[1:]
-	// 判断参数是否为0
-	if len(args) == 0 {
-		utils.ExitWithError("错误：缺少命令参数\n\n请使用 help命令 查看帮助信息", nil)
-	}
-	if args[0] == "help" || args[0] == "h" {
-		if helpText, ok := commandHelps[args[1]]; ok {
-			fmt.Print(helpText)
-			return
-		}
-		utils.ExitWithError(fmt.Sprintf("未知命令：%s", args[1]), nil)
-		fmt.Print(helpText)
-		return
-	}
+	// 创建主命令集
+	listCmd := flag.NewFlagSet("list", flag.ExitOnError)
+	searchCmd := flag.NewFlagSet("search", flag.ExitOnError)
+	genCmd := flag.NewFlagSet("gen", flag.ExitOnError)
+	helpCmd := flag.NewFlagSet("help", flag.ExitOnError)
 
-	var (
-		command string   // 主命令（list/search/gen）
-		cmdArgs []string // 命令专属参数
-	)
-	// 参数解析流程
-	command = args[0]         // 提取主命令
-	remainingArgs := args[1:] // 剩余待处理参数
+	// 为list、search、gen、help添加proxy子命令
+	proxyHelp := "代理地址（格式： IP:PORT）"
+	listProxy := listCmd.String("proxy", "", proxyHelp)
+	searchProxy := searchCmd.String("proxy", "", proxyHelp)
+	genProxy := genCmd.String("proxy", "", proxyHelp)
 
-	// 提取代理地址和主命令参数
-	proxyAddr, cmdArgs := extractProxy(remainingArgs)
-
-	// 客户端实例化（根据代理配置选择基础客户端或代理客户端）
-	client := gh // 默认使用基础客户端
-	if proxyAddr != "" {
-		// 当存在代理配置时，创建带代理的客户端
-		client = github.NewGitHubClientWithProxy(proxyAddr)
+	if len(os.Args) < 2 {
+		utils.ExitWithError("错误：缺少命令参数\n\n请使用 help/h命令 查看帮助信息", nil)
 	}
 
 	// 创建请求上下文（可用于超时控制/取消请求）
 	ctx := context.Background()
-	// 命令路由分发
-	switch command {
-	case "list": // 列出所有可用模板
+
+	switch os.Args[1] {
+	case "list":
+		listCmd.Parse(os.Args[2:])
+		client := getClient(gh, *listProxy)
 		handleList(ctx, client)
-	case "search": // 搜索模板
-		handleSearch(ctx, client, cmdArgs)
-	case "gen": // 生成.gitignore文件
-		handleGenerate(ctx, client, gen, cmdArgs)
-	default: // 未知命令处理
-		fmt.Printf("未知命令: %s\n\n%s", command, helpText)
+
+	case "search":
+		searchCmd.Parse(os.Args[2:])
+		client := getClient(gh, *searchProxy)
+		handleSearch(ctx, client, searchCmd.Args())
+
+	case "gen":
+		genCmd.Parse(os.Args[2:])
+		client := getClient(gh, *genProxy)
+		handleGenerate(ctx, client, gen, genCmd.Args())
+
+	case "help", "h":
+		helpCmd.Parse(os.Args[2:])
+		if len(helpCmd.Args()) > 0 {
+			if helpText, ok := commandHelps[helpCmd.Args()[0]]; ok {
+				fmt.Print(helpText)
+				return
+			}
+			utils.ExitWithError(fmt.Sprintf("未知命令：%s", helpCmd.Args()[0]), nil)
+		}
+		fmt.Print(helpText)
+
+	default:
+		fmt.Printf("未知命令: %s\n\n%s", os.Args[1], helpText)
 	}
+
 }
 
-func extractProxy(args []string) (string, []string) {
-	// 寻找proxy命令在所在位置
-	proxyIndex := -1
-	for i, arg := range args {
-		if arg == "proxy" {
-			proxyIndex = i
-			break
-		}
+// getClient根据是否设置代理返回不同的GitHub客户端
+func getClient(gh *github.GitHubClient, proxy string) *github.GitHubClient {
+	if proxy != "" {
+		return github.NewGitHubClientWithProxy(proxy)
 	}
-
-	var (
-		proxyAddr string
-		cmdArgs   []string
-	)
-
-	// 处理代理参数
-	if proxyIndex != -1 {
-		// 检查proxy后面是否有代理地址
-		if proxyIndex+1 >= len(args) {
-			utils.ExitWithError("proxy命令缺少代理地址", nil)
-		}
-
-		// 提取代理地址
-		proxyAddr = args[proxyIndex+1]
-		// 提取主命令后的参数
-		cmdArgs = args[:proxyIndex]
-	} else {
-		cmdArgs = args
-	}
-
-	return proxyAddr, cmdArgs
+	return gh
 }
 
 // handleList用于执行list命令来获取所有.gitignore模板
