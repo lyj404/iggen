@@ -36,18 +36,15 @@ IgGen是一个用于生成.gitignore文件的小工具
     iggen help list    # 查看list命令的详细帮助
     iggen help search  # 查看search命令的详细帮助
     iggen help gen     # 查看gen命令的详细帮助
-
-注意：
-    1. list、search、gen命令都支持代理设置
-    2. search和gen命令需要提供额外的参数
-    3. search命令的正则匹配不区分大小写，且需要使用双引号包裹
-    4. 如果不提供任何参数，将显示错误信息和帮助信息
 ```
 
 ⚠️ **注意事项**
 
 - 启用代理时请确保网络可达性
-- 只支持支持HTTP代理协议（暂不支持SOCKS）
+- 只支持支持HTTP协议
+- `list、search、gen`命令都支持代理设置
+- `search`和`gen`命令需要提供额外的参数
+- `search`命令的正则匹配不区分大小写，且需要使用双引号包裹
 
 # 📖 数据来源
 

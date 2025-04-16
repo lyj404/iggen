@@ -28,9 +28,9 @@ jobs:
         run: |
           mkdir -p dist
           # Linux构建 (amd64)
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -o dist/iggen-linux-amd64 ./main.go
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -o dist/iggen-linux-amd64 ./main.go
           # Windows构建 (amd64)
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -o dist/iggen-windows-amd64.exe ./main.go
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -o dist/iggen-windows-amd64.exe ./main.go
 
       - name: Package Release Files
         run: |
