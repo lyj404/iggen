@@ -12,6 +12,9 @@
 *.so
 *.dylib
 
+# 忽略项目编译后的可执行文件
+iggen
+
 # Test binary, built with `go test -c`
 *.test
 
@@ -27,4 +30,3 @@ go.work.sum
 
 # env file
 .env
-

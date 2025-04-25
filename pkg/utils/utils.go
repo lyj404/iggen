@@ -23,20 +23,30 @@ func FuzzySearch(templates []string, term string) []string {
 	}
 
 	matches := make([]string, 0)
+	// 用于记录已经匹配过的模板
+	matched := make(map[string]bool)
 
 	// 遍历所有模板进行双阶段匹配
 	for _, t := range templates {
 		// 将从模板列表中遍历出来的模板名称改成小写
 		lower := strings.ToLower(t)
 
+		// 如果已经匹配过，跳过
+		if matched[t] {
+			continue
+		}
+
 		// 正则匹配
 		if useRegex && reg.MatchString(lower) {
 			matches = append(matches, t)
+			matched[t] = true
+			continue
 		}
 
 		// 模糊匹配
 		if strings.Contains(lower, term) || compareSimilar(lower, term) {
 			matches = append(matches, t)
+			matched[t] = true
 		}
 	}
 
