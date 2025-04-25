@@ -58,10 +58,10 @@ func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
 			}
 			utils.ExitWithError(fmt.Sprintf("未知命令：%s", helpCmd.Args()[0]), nil)
 		}
-		fmt.Print(helpText)
+		fmt.Print(commandHelps["helpText"])
 
 	default:
-		fmt.Printf("未知命令: %s\n\n%s", os.Args[1], helpText)
+		fmt.Printf("未知命令: %s\n\n%s", os.Args[1], commandHelps["helpText"])
 	}
 
 }
