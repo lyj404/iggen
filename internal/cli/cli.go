@@ -27,7 +27,7 @@ func Run(gh *github.GitHubClient, gen *generator.GitignoreGenerator) {
 	genProxy := genCmd.String("proxy", "", proxyHelp)
 
 	if len(os.Args) < 2 {
-		utils.ExitWithError("错误：缺少命令参数\n\n请使用 help/h命令 查看帮助信息", nil)
+		utils.ExitWithError("错误：缺少命令参数\n\n请使用 help命令 查看帮助信息", nil)
 	}
 
 	// 创建请求上下文（可用于超时控制/取消请求）

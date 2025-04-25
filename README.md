@@ -5,13 +5,15 @@ IgGen是一个用于生成.gitignore文件的小工具
 # 📜 使用说明
 
 **命令格式**： `iggen <主命令> [proxy <IP:PORT>] [参数...]`
+
 ## 使用方法
+
 ```
 主命令：
     list        列出所有可用的 .gitignore 模板
     search      搜索特定的 .gitignore 模板（支持正则匹配）
     gen         生成 .gitignore 文件
-    help, h     显示帮助信息
+    help     显示帮助信息
 
 子命令：
     -proxy      代理地址（格式：IP:PORT），该子命令不能单独使用
@@ -22,8 +24,8 @@ IgGen是一个用于生成.gitignore文件的小工具
     iggen list -proxy 127.0.0.1:7890
 
     # 搜索模板
-    iggen search go  
-    iggen search "^z"                 
+    iggen search go
+    iggen search "^z"
     iggen search java -proxy 127.0.0.1:7890
 
     # 生成gitignore文件
