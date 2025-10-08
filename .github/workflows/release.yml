@@ -9,93 +9,25 @@ jobs:
   build-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # 需要写入权限来创建 GitHub Release
 
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.22.5"
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 需要完整的git历史来生成Changelog
 
-      - name: Build binaries
-        env:
-          CGO_ENABLED: 0
-        run: |
-          mkdir -p dist
-          # Linux构建 (amd64)
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -o dist/iggen-linux-amd64 ./main.go
-          # Windows构建 (amd64)
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -trimpath -o dist/iggen-windows-amd64.exe ./main.go
-
-      - name: Package Release Files
-        run: |
-          cd dist
-
-          # 创建发布目录
-          mkdir -p release
-          VERSION=${GITHUB_REF#refs/tags/}
-
-          # Linux版本：创建tar.gz
-          mkdir -p iggen-${VERSION}-linux-amd64
-          cp iggen-linux-amd64 iggen-${VERSION}-linux-amd64/iggen
-          cp ../README.md iggen-${VERSION}-linux-amd64/
-          cp ../LICENSE iggen-${VERSION}-linux-amd64/
-          tar -czf release/iggen-${VERSION}-linux-amd64.tar.gz iggen-${VERSION}-linux-amd64
-
-          # Windows版本：创建zip
-          mkdir -p iggen-${VERSION}-windows-amd64
-          cp iggen-windows-amd64.exe iggen-${VERSION}-windows-amd64/iggen.exe
-          cp ../README.md iggen-${VERSION}-windows-amd64/
-          cp ../LICENSE iggen-${VERSION}-windows-amd64/
-          zip -r release/iggen-${VERSION}-windows-amd64.zip iggen-${VERSION}-windows-amd64
-
-          # 生成校验和
-          cd release
-          sha256sum * > SHA256SUMS
-          cd ..
-
-      - name: Generate Changelog
-        id: changelog
-        run: |
-          # 获取最新的tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "")
-
-          # 生成变更日志
-          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          echo "## What's Changed" >> $GITHUB_ENV
-
-          if [ -n "$LATEST_TAG" ]; then
-            # 尝试获取上一个tag
-            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-
-            if [ -n "$PREVIOUS_TAG" ]; then
-              # 如果有上一个tag，显示两个tag之间的变更
-              git log --pretty=format:"* %s" $PREVIOUS_TAG..$LATEST_TAG >> $GITHUB_ENV
-            else
-              # 如果是第一个tag，显示所有历史
-              git log --pretty=format:"* %s" >> $GITHUB_ENV
-            fi
-          else
-            echo "* Initial release" >> $GITHUB_ENV
-          fi
-
-          echo "" >> $GITHUB_ENV
-          echo "## Checksums" >> $GITHUB_ENV
-          echo "\`\`\`" >> $GITHUB_ENV
-          cat dist/release/SHA256SUMS >> $GITHUB_ENV
-          echo "\`\`\`" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          files: |
-            dist/release/*
-          body: ${{ env.CHANGELOG }}
-          draft: false
-          prerelease: false
+          go-version: 1.25.x
+
+      - name: Run Goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          # 以下是传递给 Goreleaser 的参数
+          distribution: goreleaser # 或者 goreleaser-pro 如果你购买了专业版
+          version: latest # 使用最新版本的 Goreleaser
+          args: release --clean # 运行 release 命令，生成发布文件并推送到 GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Goreleaser 需要这个token来创建Release
