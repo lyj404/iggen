@@ -6,6 +6,17 @@ IgGen是一个用于生成.gitignore文件的小工具
 
 **命令格式**： `iggen <主命令> [proxy <IP:PORT>] [参数...]`
 
+## 安装方式
+**方法一：通过Go工具安装**
+```shell
+go install github.com/lyj404/iggen@latest
+```
+安装完成后，确保`$GOPATH/bin`在系统PATH环境变量中，即可使用`iggen`命令
+
+**方法二：下载预编译二进制文件**
+
+从 [GitHub Releases](https://github.com/lyj404/iggen/releases/latest) 下载适合您系统的最新版本
+
 ## 使用方法
 
 ```
